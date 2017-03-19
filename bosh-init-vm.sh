@@ -8,12 +8,14 @@ cd $HOME
 host_ip="172.18.161.6"
 proxy_ip="172.18.161.5"
 network_interface=ens7
-bosh_cli_bin="bosh-cli-0.0.147-linux-amd64"
+bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
+director_host=bosh-director
+stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
 
 PRIVATE_CIDR=10.0.0.0/24
 PRIVATE_GATEWAY_IP=10.0.0.1
-DNS_IP=8.8.8.8
-NETWORK_UUID='df57b57f-6fa5-4c59-9e6d-84970bec6b74' #update
+DNS_IP=10.0.0.2
+NETWORK_UUID='cad56543-157e-4a33-9178-0ab2eb201cef' #update
 OPENSTACK_IP=172.18.161.6
 PRIVATE_IP=10.0.0.3
 FLOATING_IP=172.18.161.251
@@ -26,7 +28,7 @@ OPENSTACK_TENANT=demo
 
 export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
-export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$PRIVATE_IP,$FLOATING_IP"
+export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$FLOATING_IP"
 
 # set up bosh network interface
 cat > /etc/network/interfaces.d/bosh.cfg <<EOF
@@ -37,8 +39,8 @@ EOF
 # bring interface up, if not already
 ifup $network_interface
 
-curl -JLO http://s3.amazonaws.com/bosh-cli-artifacts/$bosh_cli_bin
-chmod +x $bosh_cli_bin
+curl -L $bosh_cli_url > bosh-cli
+chmod +x bosh-cli
 
 DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update
 DEBIAN_FRONTEND=noninteractive sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qqy \
@@ -51,8 +53,8 @@ name: bosh
 
 releases:
 - name: bosh
-  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=260.5
-  sha1: 8a6a7a5d4b06c5ce2146f852b918a0dd0002e07a
+  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=261.2
+  sha1: d4635b4b82b0dc5fd083b83eb7e7405832f6654b
 - name: bosh-openstack-cpi
   url: https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-openstack-cpi-release?v=30
   sha1: 2fff8e1c241a91267ddd099a553c1339d2709821
@@ -61,15 +63,14 @@ resource_pools:
 - name: vms
   network: private
   stemcell:
-    #url: https://bosh.io/d/stemcells/bosh-openstack-kvm-ubuntu-trusty-go_agent?v=3312.15
-    url: http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3312.15-openstack-kvm-ubuntu-trusty-go_agent.tgz
-    sha1: 2d62de3fedfa256fd562b1981db2f730b74e1253
+    url: $stemcell_url
+    sha1: 1cddb531c96cc4022920b169a37eda71069c87dd
   cloud_properties:
     instance_type: m1.small
 
 disk_pools:
 - name: disks
-  disk_size: 3_000
+  disk_size: 5_000
 
 networks:
 - name: private
@@ -78,6 +79,7 @@ networks:
   - range: $PRIVATE_CIDR # <--- Replace with a private subnet CIDR
     gateway: $PRIVATE_GATEWAY_IP # <--- Replace with a private subnet's gateway
     dns: [$DNS_IP] # <--- Replace with your DNS
+    reserved: [$DNS_IP]
     cloud_properties: {net_id: $NETWORK_UUID} # <--- # Replace with private network UUID
 - name: public
   type: vip
@@ -106,6 +108,11 @@ jobs:
     static_ips: [$FLOATING_IP] # <--- Replace with a floating IP
 
   properties:
+    env:
+      http_proxy: $http_proxy
+      https_proxy: $https_proxy
+      no_proxy: $no_proxy
+
     nats:
       address: 127.0.0.1
       user: nats
@@ -202,7 +209,7 @@ azs:
 vm_type_defaults: &vm_type_defaults
   az: z1
   cloud_properties:
-    instance_type: m1.tiny
+    instance_type: m1.small
 
 vm_types:
 - name: default
@@ -222,9 +229,14 @@ disk_types:
 
 networks:
 - name: private
-  type: dynamic
+  type: manual
   subnets:
-  - cloud_properties: {net_id: $NETWORK_UUID} # <--- # Replace with private network UUID
+  - range: 10.0.0.0/24
+    gateway: 10.0.0.1
+    reserved: 10.0.0.2
+    cloud_properties:
+      net_id: $NETWORK_UUID
+      security_groups: [bosh]
     az: z1
 - name: public
   type: vip
@@ -269,10 +281,14 @@ EOF
 
 chmod 600 bosh.pem
 
-sudo route add $FLOATING_IP gw $OPENSTACK_IP
-sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP
+sudo route add $FLOATING_IP gw $OPENSTACK_IP || true
+sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP || true
 
-./$bosh_cli_bin create-env bosh-init.yml
+./bosh-cli create-env --tty bosh-init.yml
 
-scp -i bosh.pem vcap@$FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
-echo $FLOATING_IP bosh-director | sudo tee -a /etc/hosts
+scp -i bosh.pem -o StrictHostKeyChecking=no vcap@$FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
+echo $FLOATING_IP $director_host | sudo tee -a /etc/hosts
+./bosh-cli alias-env --ca-cert director.pem -e $director_host bosh
+./bosh-cli log-in -e bosh --client admin --client-secret admin
+./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
+./bosh-cli upload-stemcell -e bosh $stemcell_url
