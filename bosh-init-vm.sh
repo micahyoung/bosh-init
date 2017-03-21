@@ -209,7 +209,7 @@ azs:
 vm_type_defaults: &vm_type_defaults
   az: z1
   cloud_properties:
-    instance_type: m1.small
+    instance_type: m1.feather
 
 vm_types:
 - name: default
