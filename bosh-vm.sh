@@ -15,7 +15,7 @@ stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcel
 PRIVATE_CIDR=10.0.0.0/24
 PRIVATE_GATEWAY_IP=10.0.0.1
 DNS_IP=10.0.0.2
-NETWORK_UUID='2c27151b-4a2b-4aa6-a9b4-be5f2b274ea7' #update
+NETWORK_UUID='09172e34-690a-423b-a26b-5b95ab42cffc' #update
 OPENSTACK_IP=172.18.161.6
 PRIVATE_IP=10.0.0.3
 FLOATING_IP=172.18.161.252
@@ -70,7 +70,7 @@ resource_pools:
 
 disk_pools:
 - name: disks
-  disk_size: 5_000
+  disk_size: 10_000
 
 networks:
 - name: private
