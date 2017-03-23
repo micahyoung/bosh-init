@@ -103,7 +103,7 @@ jobs:
   networks:
   - name: private
     static_ips: [$PRIVATE_IP] # <--- Replace with a private IP
-    default: [gateway]
+    default: [dns, gateway]
   - name: public
     static_ips: [$FLOATING_IP] # <--- Replace with a floating IP
 
@@ -236,7 +236,7 @@ networks:
     reserved: 10.0.0.2
     cloud_properties:
       net_id: $NETWORK_UUID
-      security_groups: [bosh,cf]
+      security_groups: [bosh]
     az: z1
 - name: public
   type: vip
