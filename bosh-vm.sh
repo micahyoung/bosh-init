@@ -66,7 +66,7 @@ resource_pools:
     url: $stemcell_url
     sha1: 1cddb531c96cc4022920b169a37eda71069c87dd
   cloud_properties:
-    instance_type: m1.lite
+    instance_type: m1.medium
 
 disk_pools:
 - name: disks
@@ -103,7 +103,7 @@ jobs:
   networks:
   - name: private
     static_ips: [$PRIVATE_IP] # <--- Replace with a private IP
-    default: [dns, gateway]
+    default: [gateway]
   - name: public
     static_ips: [$FLOATING_IP] # <--- Replace with a floating IP
 
@@ -236,7 +236,7 @@ networks:
     reserved: 10.0.0.2
     cloud_properties:
       net_id: $NETWORK_UUID
-      security_groups: [bosh]
+      security_groups: [bosh,cf]
     az: z1
 - name: public
   type: vip
