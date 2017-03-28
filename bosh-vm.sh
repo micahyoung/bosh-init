@@ -70,7 +70,7 @@ resource_pools:
 
 disk_pools:
 - name: disks
-  disk_size: 10_000
+  disk_size: 15_000
 
 networks:
 - name: private
