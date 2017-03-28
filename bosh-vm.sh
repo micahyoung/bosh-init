@@ -243,7 +243,7 @@ networks:
   az: z1
 
 compilation:
-  workers: 3
+  workers: 2
   reuse_compilation_vms: true
   network: private
   <<: *vm_type_defaults
