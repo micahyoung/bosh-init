@@ -1,6 +1,8 @@
 #/bin/bash
 set -ex
 
+network_uuid=${1:?"Net UUID required"}
+
 # run from root
 export HOME=/root
 cd $HOME
@@ -15,7 +17,7 @@ stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcel
 PRIVATE_CIDR=10.0.0.0/24
 PRIVATE_GATEWAY_IP=10.0.0.1
 DNS_IP=10.0.0.2
-NETWORK_UUID='7c786e5c-0cdc-4af5-a9bd-0caae1072a8d' #update
+NETWORK_UUID=$network_uuid
 OPENSTACK_IP=172.18.161.6
 PRIVATE_IP=10.0.0.3
 FLOATING_IP=172.18.161.252
