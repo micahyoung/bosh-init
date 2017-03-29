@@ -68,7 +68,7 @@ resource_pools:
     url: $stemcell_url
     sha1: 1cddb531c96cc4022920b169a37eda71069c87dd
   cloud_properties:
-    instance_type: m1.medium
+    instance_type: m1.director
 
 disk_pools:
 - name: disks
