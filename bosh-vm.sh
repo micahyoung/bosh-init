@@ -60,7 +60,7 @@ region: RegionOne
 username: $OPENSTACK_USERNAME
 EOF
 
-cat > bosh-release.yml <<EOF
+cat > bosh-releases.yml <<EOF
 - type: replace
   path: /releases/name=bosh?
   value:
@@ -70,7 +70,7 @@ cat > bosh-release.yml <<EOF
     sha1: 4da9cedbcc8fbf11378ef439fb89de08300ad091
 EOF
 
-cat > bosh-stemcell.yml <<EOF
+cat > bosh-stemcells.yml <<EOF
 - type: replace
   path: /resource_pools/name=vms/stemcell?
   value:
@@ -78,7 +78,15 @@ cat > bosh-stemcell.yml <<EOF
     sha1: $stemcell_sha1
 EOF
 
-cat > proxy.yml <<EOF
+cat > bosh-disk-pools.yml <<EOF
+- type: replace
+  path: /disk_pools?
+  value:
+    name: disks
+    disk_size: 15_000
+EOF
+
+cat > bosh-env.yml <<EOF
 - type: replace
   path: /instance_groups/name=bosh/properties/env?
   value:
@@ -295,9 +303,10 @@ git clone https://github.com/cloudfoundry/bosh-deployment.git
   -o bosh-deployment/openstack/cpi.yml \
   -o bosh-deployment/openstack/keystone-v2.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
-  -o bosh-release.yml \
-  -o bosh-stemcell.yml \
-  -o proxy.yml \
+  -o bosh-releases.yml \
+  -o bosh-stemcells.yml \
+  -o bosh-disk-pools.yml \
+  -o bosh-env.yml \
   --vars-store creds.yml \
   --tty
 
