@@ -37,16 +37,13 @@ export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_
 
 cat > credentials.yml <<EOF
 admin_password: admin
-auth_url: $IDENTITY_API_ENDPOINT # <--- Replace with OpenStack Identity API endpoint
-project: $OPENSTACK_PROJECT # <--- Replace with OpenStack project name
-domain: $OPENSTACK_DOMAIN # <--- Replace with OpenStack domain name
-username: $OPENSTACK_USERNAME # <--- Replace with OpenStack username
-api_key: $OPENSTACK_PASSWORD # <--- Replace with OpenStack password
-tenant: $OPENSTACK_TENANT
+api_key: $OPENSTACK_PASSWORD
+auth_url: $IDENTITY_API_ENDPOINT
 az: nova
 default_key_name: bosh
 default_security_groups: [bosh]
 director_name: bosh
+domain: $OPENSTACK_DOMAIN
 external_ip: $DIRECTOR_FLOATING_IP
 internal_cidr: $PRIVATE_CIDR 
 internal_gw: $PRIVATE_GATEWAY_IP
@@ -55,9 +52,12 @@ net_id: $NETWORK_UUID
 openstack_domain: $OPENSTACK_DOMAIN
 openstack_password: $OPENSTACK_PASSWORD
 openstack_project: $OPENSTACK_PROJECT
+openstack_tenant: $OPENSTACK_TENANT
 openstack_username: $OPENSTACK_USERNAME
 private_key: ./bosh.pem
+project: $OPENSTACK_PROJECT
 region: RegionOne
+username: $OPENSTACK_USERNAME
 EOF
 
 cat > cloud-config.yml <<EOF
@@ -270,7 +270,9 @@ git clone https://github.com/cloudfoundry/bosh-deployment.git
   --vars-store credentials.yml \
   > bosh-deployment.yml
 
-./bosh-cli create-env --tty bosh-deployment.yml
+./bosh-cli create-env bosh-deployment.yml \
+  --vars-store credentials.yml \
+  --tty
 
 scp -i bosh.pem -o StrictHostKeyChecking=no vcap@$DIRECTOR_FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
 echo $DIRECTOR_FLOATING_IP $director_host | sudo tee -a /etc/hosts
