@@ -20,7 +20,7 @@ DNS_IP=10.0.0.2
 NETWORK_UUID=$network_uuid
 OPENSTACK_IP=172.18.161.6
 PRIVATE_IP=10.0.0.3
-FLOATING_IP=172.18.161.253
+DIRECTOR_FLOATING_IP=172.18.161.253
 IDENTITY_API_ENDPOINT=http://172.18.161.6:5000/v2.0
 OPENSTACK_PROJECT=demo
 OPENSTACK_DOMAIN=nova
@@ -28,12 +28,12 @@ OPENSTACK_USERNAME=admin
 OPENSTACK_PASSWORD=password
 OPENSTACK_TENANT=demo
 
-CONCOURSE_FLOATING_IP=172.18.161.251
+CONCOURSE_FLOATING_IP=172.18.161.254
 CONCOURSE_EXTERNAL_URL=http://ci.foo.com
 
 export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
-export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
+export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
 # set up bosh network interface
 cat > /etc/network/interfaces.d/bosh.cfg <<EOF
@@ -110,7 +110,7 @@ jobs:
     static_ips: [$PRIVATE_IP] # <--- Replace with a private IP
     default: [dns, gateway]
   - name: public
-    static_ips: [$FLOATING_IP] # <--- Replace with a floating IP
+    static_ips: [$DIRECTOR_FLOATING_IP] # <--- Replace with a floating IP
 
   properties:
     env:
@@ -191,12 +191,12 @@ cloud_provider:
   template: {name: openstack_cpi, release: bosh-openstack-cpi}
 
   ssh_tunnel:
-    host: $FLOATING_IP # <--- Replace with a floating IP
+    host: $DIRECTOR_FLOATING_IP # <--- Replace with a floating IP
     port: 22
     user: vcap
     private_key: ./bosh.pem
 
-  mbus: "https://mbus:mbus-password@$FLOATING_IP:6868" # <--- Uncomment & change
+  mbus: "https://mbus:mbus-password@$DIRECTOR_FLOATING_IP:6868" # <--- Uncomment & change
 
   properties:
     openstack: *openstack
@@ -385,13 +385,13 @@ EOF
 
 chmod 600 bosh.pem
 
-sudo route add $FLOATING_IP gw $OPENSTACK_IP || true
+sudo route add $DIRECTOR_FLOATING_IP gw $OPENSTACK_IP || true
 sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP || true
 
 ./bosh-cli create-env --tty bosh-init.yml
 
-scp -i bosh.pem -o StrictHostKeyChecking=no vcap@$FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
-echo $FLOATING_IP $director_host | sudo tee -a /etc/hosts
+scp -i bosh.pem -o StrictHostKeyChecking=no vcap@$DIRECTOR_FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
+echo $DIRECTOR_FLOATING_IP $director_host | sudo tee -a /etc/hosts
 ./bosh-cli alias-env --ca-cert director.pem -e $director_host bosh
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
