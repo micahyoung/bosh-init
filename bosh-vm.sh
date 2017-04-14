@@ -28,9 +28,12 @@ OPENSTACK_USERNAME=admin
 OPENSTACK_PASSWORD=password
 OPENSTACK_TENANT=demo
 
+CONCOURSE_FLOATING_IP=172.18.161.251
+CONCOURSE_EXTERNAL_URL=http://ci.foo.com
+
 export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
-export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$FLOATING_IP"
+export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
 # set up bosh network interface
 cat > /etc/network/interfaces.d/bosh.cfg <<EOF
@@ -197,9 +200,7 @@ cloud_provider:
 
   properties:
     openstack: *openstack
-    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"} # <--- Uncomment & change
-    blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache}
-    ntp: *ntp
+    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"} # <--- Uncomment & change blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache} ntp: *ntp
 EOF
 
 cat > cloud-config.yml <<EOF
@@ -281,6 +282,107 @@ X5xdkeyISESEgpY9Qf+V7wy/YS4V9schYbXMnRulP5xCuxmhjm1bTw3w6yc3RCzG
 -----END RSA PRIVATE KEY-----
 EOF
 
+cat > concourse-deployment.yml <<EOF
+---
+name: concourse
+
+releases:
+- name: concourse
+  url: https://bosh.io/d/github.com/concourse/concourse?v=2.7.0
+  sha1: 826932f631d0941b3e4cc9cb19e0017c7f989b56
+  version: 2.7.0
+- name: garden-runc
+  url: https://bosh.io/d/github.com/cloudfoundry/garden-runc-release?v=1.3.0
+  sha1: 816044289381e3b7b66dd73fbcb20005594026a3
+  version: 1.3.0
+
+stemcells:
+- alias: trusty
+  os: ubuntu-trusty
+  version: latest
+
+instance_groups:
+- name: web
+  instances: 1
+  # replace with a VM type from your BOSH Director's cloud config
+  vm_type: web
+  stemcell: trusty
+  azs: [z1]
+  networks:
+  - name: private
+    default: [dns, gateway]
+  - name: public
+    static_ips: [$CONCOURSE_FLOATING_IP] # <--- Replace with a floating IP
+  jobs:
+  - name: atc
+    release: concourse
+    properties:
+      # replace with your CI's externally reachable URL, e.g. https://ci.foo.com
+      external_url: $CONCOURSE_EXTERNAL_URL
+
+      # replace with username/password, or configure GitHub auth
+      basic_auth_username: admin
+      basic_auth_password: admin
+
+      postgresql_database: &atc_db atc
+  - name: tsa
+    release: concourse
+    properties: {}
+
+- name: db
+  instances: 1
+  # replace with a VM type from your BOSH Director's cloud config
+  vm_type: database
+  stemcell: trusty
+  # replace with a disk type from your BOSH Director's cloud config
+  persistent_disk_type: default
+  azs: [z1]
+  networks: [{name: private}]
+  jobs:
+  - name: postgresql
+    release: concourse
+    properties:
+      databases:
+      - name: *atc_db
+        # make up a role and password
+        role: concourse
+        password: concourse
+
+- name: worker
+  instances: 1
+  # replace with a VM type from your BOSH Director's cloud config
+  vm_type: worker
+  stemcell: trusty
+  azs: [z1]
+  networks: [{name: private}]
+
+  jobs:
+  - name: groundcrew
+    release: concourse
+    properties:
+      http_proxy_url: $http_proxy
+      https_proxy_url: $https_proxy
+      no_proxy: [$no_proxy]
+
+  - name: baggageclaim
+    release: concourse
+    properties: {}
+
+  - name: garden
+    release: garden-runc
+    properties:
+      garden:
+        listen_network: tcp
+        listen_address: 0.0.0.0:7777
+
+update:
+  canaries: 1
+  max_in_flight: 1
+  serial: false
+  canary_watch_time: 1000-60000
+  update_watch_time: 1000-60000
+EOF
+
 chmod 600 bosh.pem
 
 sudo route add $FLOATING_IP gw $OPENSTACK_IP || true
@@ -294,3 +396,4 @@ echo $FLOATING_IP $director_host | sudo tee -a /etc/hosts
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
 ./bosh-cli upload-stemcell -e bosh $stemcell_url
+./bosh-cli deploy -e bosh -d bosh-concourse bosh-concourse-deployment.yml
