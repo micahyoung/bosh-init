@@ -5,6 +5,9 @@ set -ex
 export HOME=/root
 cd $HOME
 
+curl -L $bosh_cli_url > bosh-cli
+chmod +x bosh-cli
+
 cat > bosh-creds.yml <<EOF
 admin_password: admin
 api_key: password
@@ -277,9 +280,6 @@ EOF
 
 # bring interface up, if not already
 ifup $network_interface
-
-curl -L $bosh_cli_url > bosh-cli
-chmod +x bosh-cli
 
 DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update
 DEBIAN_FRONTEND=noninteractive sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qqy \
