@@ -5,6 +5,7 @@ set -ex
 export HOME=/root
 cd $HOME
 
+bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
 curl -L $bosh_cli_url > bosh-cli
 chmod +x bosh-cli
 
@@ -49,7 +50,6 @@ OPENSTACK_IP=172.18.161.6
 DNS_IP=10.0.0.2
 proxy_ip="172.18.161.5"
 network_interface=ens7
-bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
 stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
 stemcell_sha1=1cddb531c96cc4022920b169a37eda71069c87dd
 
