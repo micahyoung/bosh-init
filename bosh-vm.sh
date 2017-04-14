@@ -266,6 +266,7 @@ git clone https://github.com/cloudfoundry/bosh-deployment.git
 ./bosh-cli interpolate bosh-deployment/bosh.yml \
   --var-errs \
   -o bosh-deployment/openstack/cpi.yml \
+  -o bosh-deployment/openstack/keystone-v2.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
   --vars-store credentials.yml \
   > bosh-deployment.yml
