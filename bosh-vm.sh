@@ -21,15 +21,6 @@ NETWORK_UUID=$network_uuid
 OPENSTACK_IP=172.18.161.6
 PRIVATE_IP=10.0.0.3
 DIRECTOR_FLOATING_IP=172.18.161.254
-IDENTITY_API_ENDPOINT=http://172.18.161.6:5000/v2.0
-OPENSTACK_PROJECT=demo
-OPENSTACK_DOMAIN=nova
-OPENSTACK_USERNAME=admin
-OPENSTACK_PASSWORD=password
-OPENSTACK_TENANT=demo
-
-CONCOURSE_FLOATING_IP=172.18.161.253
-CONCOURSE_EXTERNAL_URL=http://ci.foo.com
 
 export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
@@ -37,27 +28,24 @@ export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$PRIVATE_IP,$DIRECTOR_FL
 
 cat > bosh-creds.yml <<EOF
 admin_password: admin
-api_key: $OPENSTACK_PASSWORD
-auth_url: $IDENTITY_API_ENDPOINT
+api_key: password
+auth_url: http://172.18.161.6:5000/v2.0
 az: nova
 default_key_name: bosh
 default_security_groups: [bosh]
 director_name: bosh
-domain: $OPENSTACK_DOMAIN
 external_ip: $DIRECTOR_FLOATING_IP
 internal_cidr: $PRIVATE_CIDR 
 internal_gw: $PRIVATE_GATEWAY_IP
 internal_ip:  $PRIVATE_IP
 net_id: $NETWORK_UUID
-openstack_domain: $OPENSTACK_DOMAIN
-openstack_password: $OPENSTACK_PASSWORD
-openstack_project: $OPENSTACK_PROJECT
-openstack_tenant: $OPENSTACK_TENANT
-openstack_username: $OPENSTACK_USERNAME
+openstack_domain: nova
+openstack_password: password
+openstack_project: demo
+openstack_tenant: demo
+openstack_username: admin
 private_key: ../bosh.pem
-project: $OPENSTACK_PROJECT
 region: RegionOne
-username: $OPENSTACK_USERNAME
 EOF
 
 cat > bosh-releases.yml <<EOF
@@ -267,8 +255,8 @@ update:
 EOF
 
 cat > concourse-creds.yml <<EOF
-concourse_floating_ip: $CONCOURSE_FLOATING_IP
-concourse_external_url: $CONCOURSE_EXTERNAL_URL
+concourse_floating_ip: 172.18.161.253
+concourse_external_url: http://ci.foo.com
 concourse_basic_auth_username: admin
 concourse_basic_auth_password: admin
 concourse_atc_db_name: atc
