@@ -11,9 +11,8 @@ host_ip="172.18.161.6"
 proxy_ip="172.18.161.5"
 network_interface=ens7
 bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
-director_host=bosh-director
 stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
-bosh_release_url="https://bosh.io/d/github.com/cloudfoundry/bosh?v=261.4"
+stemcell_sha1=1cddb531c96cc4022920b169a37eda71069c87dd
 
 PRIVATE_CIDR=10.0.0.0/24
 PRIVATE_GATEWAY_IP=10.0.0.1
@@ -34,7 +33,7 @@ CONCOURSE_EXTERNAL_URL=http://ci.foo.com
 
 export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
-export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
+export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
 cat > creds.yml <<EOF
 admin_password: admin
@@ -49,7 +48,6 @@ external_ip: $DIRECTOR_FLOATING_IP
 internal_cidr: $PRIVATE_CIDR 
 internal_gw: $PRIVATE_GATEWAY_IP
 internal_ip:  $PRIVATE_IP
-local_bosh_release: ../bosh.tgz
 net_id: $NETWORK_UUID
 openstack_domain: $OPENSTACK_DOMAIN
 openstack_password: $OPENSTACK_PASSWORD
@@ -60,6 +58,24 @@ private_key: ../bosh.pem
 project: $OPENSTACK_PROJECT
 region: RegionOne
 username: $OPENSTACK_USERNAME
+EOF
+
+cat > bosh-release.yml <<EOF
+- type: replace
+  path: /releases/name=bosh?
+  value:
+    name: bosh
+    version: 261.4
+    url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=261.4
+    sha1: 4da9cedbcc8fbf11378ef439fb89de08300ad091
+EOF
+
+cat > bosh-stemcell.yml <<EOF
+- type: replace
+  path: /resource_pools/name=vms/stemcell?
+  value:
+    url: $stemcell_url
+    sha1: $stemcell_sha1
 EOF
 
 cat > proxy.yml <<EOF
@@ -102,9 +118,9 @@ networks:
 - name: private
   type: manual
   subnets:
-  - range: 10.0.0.0/24
-    gateway: 10.0.0.1
-    reserved: 10.0.0.2
+  - range: $PRIVATE_CIDR
+    gateway: $PRIVATE_GATEWAY_IP
+    reserved: $DNS_IP
     cloud_properties:
       net_id: $NETWORK_UUID
       security_groups: [bosh]
@@ -274,14 +290,13 @@ sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP || true
 
 git clone https://github.com/cloudfoundry/bosh-deployment.git
 
-curl -L $bosh_release_url > bosh.tgz
-
 ./bosh-cli create-env bosh-deployment/bosh.yml \
   --state bosh-deployment-state.json
   -o bosh-deployment/openstack/cpi.yml \
   -o bosh-deployment/openstack/keystone-v2.yml \
-  -o bosh-deployment/local-bosh-release.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
+  -o bosh-release.yml \
+  -o bosh-stemcell.yml \
   -o proxy.yml \
   --vars-store creds.yml \
   --tty
