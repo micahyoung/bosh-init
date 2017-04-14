@@ -35,12 +35,6 @@ export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
 export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
-# set up bosh network interface
-cat > /etc/network/interfaces.d/bosh.cfg <<EOF
-auto $network_interface
-iface $network_interface inet dhcp
-EOF
-
 cat > bosh-init.yml <<EOF
 cloud_provider:
   mbus: "https://mbus:mbus-password@$DIRECTOR_FLOATING_IP:6868" # <--- Uncomment & change
@@ -379,6 +373,12 @@ update:
   serial: false
   canary_watch_time: 1000-60000
   update_watch_time: 1000-60000
+EOF
+
+# set up bosh network interface
+cat > /etc/network/interfaces.d/bosh.cfg <<EOF
+auto $network_interface
+iface $network_interface inet dhcp
 EOF
 
 # bring interface up, if not already
