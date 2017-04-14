@@ -200,7 +200,9 @@ cloud_provider:
 
   properties:
     openstack: *openstack
-    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"} # <--- Uncomment & change blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache} ntp: *ntp
+    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"} # <--- Uncomment & change
+    blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache}
+    ntp: *ntp
 EOF
 
 cat > cloud-config.yml <<EOF
