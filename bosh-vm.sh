@@ -248,7 +248,7 @@ networks:
   az: z1
 
 compilation:
-  workers: 2
+  workers: 3
   reuse_compilation_vms: true
   network: private
   <<: *vm_type_defaults
