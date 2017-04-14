@@ -41,17 +41,6 @@ auto $network_interface
 iface $network_interface inet dhcp
 EOF
 
-# bring interface up, if not already
-ifup $network_interface
-
-curl -L $bosh_cli_url > bosh-cli
-chmod +x bosh-cli
-
-DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update
-DEBIAN_FRONTEND=noninteractive sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qqy \
-  build-essential zlibc zlib1g-dev ruby ruby-dev openssl libxslt-dev libxml2-dev libssl-dev libreadline6 libreadline6-dev libyaml-dev libsqlite3-dev sqlite3
-
-
 cat > bosh-init.yml <<EOF
 cloud_provider:
   mbus: "https://mbus:mbus-password@$DIRECTOR_FLOATING_IP:6868" # <--- Uncomment & change
@@ -391,6 +380,16 @@ update:
   canary_watch_time: 1000-60000
   update_watch_time: 1000-60000
 EOF
+
+# bring interface up, if not already
+ifup $network_interface
+
+curl -L $bosh_cli_url > bosh-cli
+chmod +x bosh-cli
+
+DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update
+DEBIAN_FRONTEND=noninteractive sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qqy \
+  build-essential zlibc zlib1g-dev ruby ruby-dev openssl libxslt-dev libxml2-dev libssl-dev libreadline6 libreadline6-dev libyaml-dev libsqlite3-dev sqlite3
 
 chmod 600 bosh.pem
 
