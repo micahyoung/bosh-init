@@ -53,9 +53,149 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install -o Dpkg::Options::="--force-
 
 
 cat > bosh-init.yml <<EOF
----
-name: bosh
+cloud_provider:
+  mbus: "https://mbus:mbus-password@$DIRECTOR_FLOATING_IP:6868" # <--- Uncomment & change
 
+  properties:
+    agent:
+      mbus: "https://mbus:mbus-password@0.0.0.0:6868"
+    blobstore:
+      path: /var/vcap/micro_bosh/data/cache
+      provider: local
+    ntp: &ntp
+    - time1.google.com
+    - time2.google.com
+    - time3.google.com
+    - time4.google.com
+    openstack: &openstack
+      api_key: $OPENSTACK_PASSWORD
+      auth_url: $IDENTITY_API_ENDPOINT
+      default_key_name: bosh
+      default_security_groups:
+      - bosh
+      domain: $OPENSTACK_DOMAIN
+      human_readable_vm_names: true
+      project: $OPENSTACK_PROJECT
+      region: RegionOne
+      tenant: $OPENSTACK_TENANT
+      username: $OPENSTACK_USERNAME
+  ssh_tunnel:
+    host: $DIRECTOR_FLOATING_IP
+    port: 22
+    private_key: ./bosh.pem
+    user: vcap
+  template:
+    name: openstack_cpi
+    release: bosh-openstack-cpi
+disk_pools:
+- disk_size: 15_000
+  name: disks
+jobs:
+- instances: 1
+  templates:
+  - name: nats
+    release: bosh
+  - name: postgres
+    release: bosh
+  - name: blobstore
+    release: bosh
+  - name: director
+    release: bosh
+  - name: health_monitor
+    release: bosh
+  - name: registry
+    release: bosh
+  - name: openstack_cpi
+    release: bosh-openstack-cpi
+  name: bosh
+  networks:
+  - default:
+    - dns
+    - gateway
+    name: private
+    static_ips:
+    - $PRIVATE_IP
+  - name: public
+    static_ips:
+    - $DIRECTOR_FLOATING_IP
+  persistent_disk_pool: disks
+  properties:
+    agent:
+      mbus: "nats://nats:nats-password@$PRIVATE_IP:4222"
+    blobstore:
+      address: $PRIVATE_IP
+      agent:
+        password: agent-password
+        user: agent
+      director:
+        password: director-password
+        user: director
+      port: 25250
+      provider: dav
+    director:
+      address: 127.0.0.1
+      cpi_job: openstack_cpi
+      db: *db
+      max_threads: 3
+      name: my-bosh
+      user_management:
+        local:
+          users:
+          - name: admin
+            password: admin
+          - name: hm
+            password: hm-password
+        provider: local
+    env:
+      http_proxy: $http_proxy
+      https_proxy: $https_proxy
+      no_proxy: $no_proxy
+    hm:
+      director_account:
+        password: hm-password
+        user: hm
+      resurrector_enabled: true
+    nats:
+      address: 127.0.0.1
+      password: nats-password
+      user: nats
+    ntp: *ntp
+    openstack: *openstack
+    postgres: &db
+      adapter: postgres
+      database: bosh
+      host: 127.0.0.1
+      listen_address: 127.0.0.1
+      password: postgres-password
+      user: postgres
+    registry:
+      address: $PRIVATE_IP
+      db: *db
+      host: $PRIVATE_IP
+      http:
+        user: admin
+        password: admin
+        port: 25777
+      password: admin
+      port: 25777
+      username: admin
+
+  resource_pool: vms
+name: bosh
+networks:
+- name: private
+  subnets:
+  - cloud_properties:
+      net_id: $NETWORK_UUID
+    dns:
+    - $DNS_IP
+    gateway: $PRIVATE_GATEWAY_IP
+    range: $PRIVATE_CIDR
+    reserved:
+    - $DNS_IP
+  type: manual
+- name: public
+  type: vip
 releases:
 - name: bosh
   url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=261.2
@@ -63,146 +203,14 @@ releases:
 - name: bosh-openstack-cpi
   url: https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-openstack-cpi-release?v=30
   sha1: 2fff8e1c241a91267ddd099a553c1339d2709821
-
 resource_pools:
-- name: vms
+- cloud_properties:
+    instance_type: m1.director
+  name: vms
   network: private
   stemcell:
     url: $stemcell_url
     sha1: 1cddb531c96cc4022920b169a37eda71069c87dd
-  cloud_properties:
-    instance_type: m1.director
-
-disk_pools:
-- name: disks
-  disk_size: 15_000
-
-networks:
-- name: private
-  type: manual
-  subnets:
-  - range: $PRIVATE_CIDR # <--- Replace with a private subnet CIDR
-    gateway: $PRIVATE_GATEWAY_IP # <--- Replace with a private subnet's gateway
-    dns: [$DNS_IP] # <--- Replace with your DNS
-    reserved: [$DNS_IP]
-    cloud_properties: {net_id: $NETWORK_UUID} # <--- # Replace with private network UUID
-- name: public
-  type: vip
-
-jobs:
-- name: bosh
-  instances: 1
-
-  templates:
-  - {name: nats, release: bosh}
-  - {name: postgres, release: bosh}
-  - {name: blobstore, release: bosh}
-  - {name: director, release: bosh}
-  - {name: health_monitor, release: bosh}
-  - {name: registry, release: bosh}
-  - {name: openstack_cpi, release: bosh-openstack-cpi}
-
-  resource_pool: vms
-  persistent_disk_pool: disks
-
-  networks:
-  - name: private
-    static_ips: [$PRIVATE_IP] # <--- Replace with a private IP
-    default: [dns, gateway]
-  - name: public
-    static_ips: [$DIRECTOR_FLOATING_IP] # <--- Replace with a floating IP
-
-  properties:
-    env:
-      http_proxy: $http_proxy
-      https_proxy: $https_proxy
-      no_proxy: $no_proxy
-
-    nats:
-      address: 127.0.0.1
-      user: nats
-      password: nats-password # <--- Uncomment & change
-
-    postgres: &db
-      listen_address: 127.0.0.1
-      host: 127.0.0.1
-      user: postgres
-      password: postgres-password # <--- Uncomment & change
-      database: bosh
-      adapter: postgres
-
-    registry:
-      address: $PRIVATE_IP # <--- Replace with a private IP
-      host: $PRIVATE_IP # <--- Replace with a private IP
-      db: *db
-      http:
-        user: admin
-        password: admin # <--- Uncomment & change
-        port: 25777
-      username: admin
-      password: admin # <--- Uncomment & change
-      port: 25777
-
-    blobstore:
-      address: $PRIVATE_IP # <--- Replace with a private IP
-      port: 25250
-      provider: dav
-      director:
-        user: director
-        password: director-password # <--- Uncomment & change
-      agent:
-        user: agent
-        password: agent-password # <--- Uncomment & change
-
-    director:
-      address: 127.0.0.1
-      name: my-bosh
-      db: *db
-      cpi_job: openstack_cpi
-      max_threads: 3
-      user_management:
-        provider: local
-        local:
-          users:
-          - {name: admin, password: admin} # <--- Uncomment & change
-          - {name: hm, password: hm-password} # <--- Uncomment & change
-
-    hm:
-      director_account:
-        user: hm
-        password: hm-password # <--- Uncomment & change
-      resurrector_enabled: true
-
-    openstack: &openstack
-      auth_url: $IDENTITY_API_ENDPOINT # <--- Replace with OpenStack Identity API endpoint
-      project: $OPENSTACK_PROJECT # <--- Replace with OpenStack project name
-      domain: $OPENSTACK_DOMAIN # <--- Replace with OpenStack domain name
-      username: $OPENSTACK_USERNAME # <--- Replace with OpenStack username
-      api_key: $OPENSTACK_PASSWORD # <--- Replace with OpenStack password
-      tenant: $OPENSTACK_TENANT
-      default_key_name: bosh
-      default_security_groups: [bosh]
-
-    agent: {mbus: "nats://nats:nats-password@$PRIVATE_IP:4222"} # <--- Uncomment & change
-
-    ntp: &ntp [0.pool.ntp.org, 1.pool.ntp.org]
-
-cloud_provider:
-  template: {name: openstack_cpi, release: bosh-openstack-cpi}
-
-  ssh_tunnel:
-    host: $DIRECTOR_FLOATING_IP # <--- Replace with a floating IP
-    port: 22
-    user: vcap
-    private_key: ./bosh.pem
-
-  mbus: "https://mbus:mbus-password@$DIRECTOR_FLOATING_IP:6868" # <--- Uncomment & change
-
-  properties:
-    openstack: *openstack
-    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"} # <--- Uncomment & change
-    blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache}
-    ntp: *ntp
 EOF
 
 cat > cloud-config.yml <<EOF
