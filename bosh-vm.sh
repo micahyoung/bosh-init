@@ -13,6 +13,7 @@ network_interface=ens7
 bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
 director_host=bosh-director
 stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
+bosh_release_url="https://bosh.io/d/github.com/cloudfoundry/bosh?v=261.4"
 
 PRIVATE_CIDR=10.0.0.0/24
 PRIVATE_GATEWAY_IP=10.0.0.1
@@ -48,6 +49,7 @@ external_ip: $DIRECTOR_FLOATING_IP
 internal_cidr: $PRIVATE_CIDR 
 internal_gw: $PRIVATE_GATEWAY_IP
 internal_ip:  $PRIVATE_IP
+local_bosh_release: bosh.tgz
 net_id: $NETWORK_UUID
 openstack_domain: $OPENSTACK_DOMAIN
 openstack_password: $OPENSTACK_PASSWORD
@@ -263,10 +265,13 @@ sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP || true
 
 git clone https://github.com/cloudfoundry/bosh-deployment.git
 
+curl -L $bosh_release_url > bosh.tgz
+
 ./bosh-cli interpolate bosh-deployment/bosh.yml \
   --var-errs \
   -o bosh-deployment/openstack/cpi.yml \
   -o bosh-deployment/openstack/keystone-v2.yml \
+  -o bosh-deployment/local-bosh-release.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
   --vars-store credentials.yml \
   > bosh-deployment.yml
