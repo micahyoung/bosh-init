@@ -21,3 +21,5 @@ fi
 
 while ! uvt-kvm ip $dom_name; do sleep 1; done
 virsh attach-interface $dom_name network bosh --mac de:ad:be:ef:00:00 --model virtio
+
+uvt-kvm ssh --insecure $dom_name 'tail -f /var/log/cloud-init-output.log'
