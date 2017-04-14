@@ -299,7 +299,7 @@ sudo route add -net $PRIVATE_CIDR gw $OPENSTACK_IP || true
 git clone https://github.com/cloudfoundry/bosh-deployment.git
 
 ./bosh-cli create-env bosh-deployment/bosh.yml \
-  --state bosh-deployment-state.json
+  --state bosh-deployment-state.json \
   -o bosh-deployment/openstack/cpi.yml \
   -o bosh-deployment/openstack/keystone-v2.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
