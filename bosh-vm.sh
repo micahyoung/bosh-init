@@ -35,7 +35,7 @@ export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
 export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
-cat > creds.yml <<EOF
+cat > bosh-creds.yml <<EOF
 admin_password: admin
 api_key: $OPENSTACK_PASSWORD
 auth_url: $IDENTITY_API_ENDPOINT
@@ -196,7 +196,6 @@ stemcells:
 instance_groups:
 - name: web
   instances: 1
-  # replace with a VM type from your BOSH Director's cloud config
   vm_type: web
   stemcell: trusty
   azs: [z1]
@@ -204,19 +203,15 @@ instance_groups:
   - name: private
     default: [dns, gateway]
   - name: public
-    static_ips: [$CONCOURSE_FLOATING_IP] # <--- Replace with a floating IP
+    static_ips: [((concourse_floating_ip))]
   jobs:
   - name: atc
     release: concourse
     properties:
-      # replace with your CI's externally reachable URL, e.g. https://ci.foo.com
-      external_url: $CONCOURSE_EXTERNAL_URL
-
-      # replace with username/password, or configure GitHub auth
-      basic_auth_username: admin
-      basic_auth_password: admin
-
-      postgresql_database: &atc_db atc
+      external_url: ((concourse_external_url))
+      basic_auth_username: ((concourse_basic_auth_username))
+      basic_auth_password: ((concourse_basic_auth_password))
+      postgresql_database: ((concourse_atc_db_name))
   - name: tsa
     release: concourse
     properties: {}
@@ -235,10 +230,9 @@ instance_groups:
     release: concourse
     properties:
       databases:
-      - name: *atc_db
-        # make up a role and password
-        role: concourse
-        password: concourse
+      - name: ((concourse_atc_db_name))
+        role: ((concourse_atc_db_role))
+        password: ((concourse_atc_db_password))
 
 - name: worker
   instances: 1
@@ -251,10 +245,7 @@ instance_groups:
   jobs:
   - name: groundcrew
     release: concourse
-    properties:
-      http_proxy_url: $http_proxy
-      https_proxy_url: $https_proxy
-      no_proxy: [$no_proxy]
+    properties: {}
 
   - name: baggageclaim
     release: concourse
@@ -273,6 +264,25 @@ update:
   serial: false
   canary_watch_time: 1000-60000
   update_watch_time: 1000-60000
+EOF
+
+cat > concourse-creds.yml <<EOF
+concourse_floating_ip: $CONCOURSE_FLOATING_IP
+concourse_external_url: $CONCOURSE_EXTERNAL_URL
+concourse_basic_auth_username: admin
+concourse_basic_auth_password: admin
+concourse_atc_db_name: atc
+concourse_atc_db_role: concourse
+concourse_atc_db_password: concourse
+EOF
+
+cat > concourse-groundcrew-properties.yml <<EOF
+- type: replace
+  path: /instance_groups/name=worker/jobs/name=groundcrew/properties?
+  value:
+    http_proxy_url: $http_proxy
+    https_proxy_url: $https_proxy
+    no_proxy: [$no_proxy]
 EOF
 
 # set up bosh network interface
@@ -307,12 +317,17 @@ git clone https://github.com/cloudfoundry/bosh-deployment.git
   -o bosh-stemcells.yml \
   -o bosh-disk-pools.yml \
   -o bosh-env.yml \
-  --vars-store creds.yml \
-  --tty
+  --vars-store bosh-creds.yml \
+  --tty \
+  ;
 
-./bosh-cli interpolate ./creds.yml --path /director_ssl/ca > director.pem
+./bosh-cli interpolate ./bosh-creds.yml --path /director_ssl/ca > director.pem
 ./bosh-cli alias-env --ca-cert director.pem -e $DIRECTOR_FLOATING_IP bosh
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
 ./bosh-cli upload-stemcell -e bosh $stemcell_url
-./bosh-cli deploy -e bosh -d bosh-concourse -n bosh-concourse-deployment.yml
+./bosh-cli deploy -e bosh -d bosh-concourse bosh-concourse-deployment.yml \
+  -o concourse-groundcrew-properties.yml \
+  --vars-store concourse-creds.yml \
+  -n \
+  ;
