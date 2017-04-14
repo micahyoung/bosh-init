@@ -7,7 +7,6 @@ disk_gb=10
 if virsh list --all | grep $dom_name; then
   virsh start $dom_name
 else
-  network_uuid=${1:?"Net UUID required"}
 
 cat > uvt-wrapper.sh <<EOF
 cat << EOF2 | base64 -d  | tar xJ > $script

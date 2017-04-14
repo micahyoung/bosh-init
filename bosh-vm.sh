@@ -1,30 +1,9 @@
 #/bin/bash
 set -ex
 
-network_uuid=${1:?"Net UUID required"}
-
 # run from root
 export HOME=/root
 cd $HOME
-
-host_ip="172.18.161.6"
-proxy_ip="172.18.161.5"
-network_interface=ens7
-bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
-stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
-stemcell_sha1=1cddb531c96cc4022920b169a37eda71069c87dd
-
-PRIVATE_CIDR=10.0.0.0/24
-PRIVATE_GATEWAY_IP=10.0.0.1
-DNS_IP=10.0.0.2
-NETWORK_UUID=$network_uuid
-OPENSTACK_IP=172.18.161.6
-PRIVATE_IP=10.0.0.3
-DIRECTOR_FLOATING_IP=172.18.161.254
-
-export http_proxy="http://$proxy_ip:8123"
-export https_proxy="http://$proxy_ip:8123"
-export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
 cat > bosh-creds.yml <<EOF
 admin_password: admin
@@ -34,11 +13,11 @@ az: nova
 default_key_name: bosh
 default_security_groups: [bosh]
 director_name: bosh
-external_ip: $DIRECTOR_FLOATING_IP
-internal_cidr: $PRIVATE_CIDR 
-internal_gw: $PRIVATE_GATEWAY_IP
-internal_ip:  $PRIVATE_IP
-net_id: $NETWORK_UUID
+external_ip: 172.18.161.254
+internal_cidr: 10.0.0.0/24
+internal_gw: 10.0.0.1
+internal_ip: 10.0.0.3
+net_id: 8e413f91-6ff7-4e97-b534-9287adb5107d
 openstack_domain: nova
 openstack_password: password
 openstack_project: demo
@@ -47,6 +26,33 @@ openstack_username: admin
 private_key: ../bosh.pem
 region: RegionOne
 EOF
+
+cat > concourse-creds.yml <<EOF
+concourse_floating_ip: 172.18.161.253
+concourse_external_url: http://ci.foo.com
+concourse_basic_auth_username: admin
+concourse_basic_auth_password: admin
+concourse_atc_db_name: atc
+concourse_atc_db_role: concourse
+concourse_atc_db_password: concourse
+EOF
+
+DIRECTOR_FLOATING_IP=$(./bosh-cli int bosh-creds.yml --path /external_ip)
+PRIVATE_CIDR=$(./bosh-cli int bosh-creds.yml --path /internal_cidr)
+PRIVATE_GATEWAY_IP=$(./bosh-cli int bosh-creds.yml --path /internal_gw)
+PRIVATE_IP=$(./bosh-cli int bosh-creds.yml --path /internal_ip)
+NETWORK_UUID=$(./bosh-cli int bosh-creds.yml --path /net_id)
+OPENSTACK_IP=172.18.161.6
+DNS_IP=10.0.0.2
+proxy_ip="172.18.161.5"
+network_interface=ens7
+bosh_cli_url="http://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-2.0.1-linux-amd64"
+stemcell_url="http://s3.amazonaws.com/bosh-core-stemcells/openstack/bosh-stemcell-3363.9-openstack-kvm-ubuntu-trusty-go_agent.tgz"
+stemcell_sha1=1cddb531c96cc4022920b169a37eda71069c87dd
+
+export http_proxy="http://$proxy_ip:8123"
+export https_proxy="http://$proxy_ip:8123"
+export no_proxy="127.0.0.1,localhost,$OPENSTACK_IP,$proxy_ip,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
 cat > bosh-releases.yml <<EOF
 - type: replace
@@ -252,16 +258,6 @@ update:
   serial: false
   canary_watch_time: 1000-60000
   update_watch_time: 1000-60000
-EOF
-
-cat > concourse-creds.yml <<EOF
-concourse_floating_ip: 172.18.161.253
-concourse_external_url: http://ci.foo.com
-concourse_basic_auth_username: admin
-concourse_basic_auth_password: admin
-concourse_atc_db_name: atc
-concourse_atc_db_role: concourse
-concourse_atc_db_password: concourse
 EOF
 
 cat > concourse-groundcrew-properties.yml <<EOF
