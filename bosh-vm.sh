@@ -277,7 +277,7 @@ curl -L $bosh_release_url > bosh.tgz
   --tty
 
 ./bosh-cli interpolate ./creds.yml --path /director_ssl/ca > director.pem
-./bosh-cli alias-env --ca-cert director.pem -e $director_host bosh
+./bosh-cli alias-env --ca-cert director.pem -e $DIRECTOR_FLOATING_IP bosh
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
 ./bosh-cli upload-stemcell -e bosh $stemcell_url
