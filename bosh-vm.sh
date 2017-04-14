@@ -80,7 +80,7 @@ EOF
 
 cat > bosh-disk-pools.yml <<EOF
 - type: replace
-  path: /disk_pools?
+  path: /disk_pools/name=disks?
   value:
     name: disks
     disk_size: 15_000
