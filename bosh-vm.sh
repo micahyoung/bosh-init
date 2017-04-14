@@ -62,6 +62,15 @@ region: RegionOne
 username: $OPENSTACK_USERNAME
 EOF
 
+cat > proxy.yml <<EOF
+- type: replace
+  path: /instance_groups/name=bosh/properties/env?
+  value:
+    http_proxy: $http_proxy
+    https_proxy: $https_proxy
+    no_proxy: $no_proxy
+EOF
+
 cat > cloud-config.yml <<EOF
 azs:
 - name: z1
@@ -273,6 +282,7 @@ curl -L $bosh_release_url > bosh.tgz
   -o bosh-deployment/openstack/keystone-v2.yml \
   -o bosh-deployment/local-bosh-release.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
+  -o proxy.yml \
   --vars-store creds.yml \
   --tty
 
