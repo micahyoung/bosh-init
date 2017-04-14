@@ -36,7 +36,7 @@ export http_proxy="http://$proxy_ip:8123"
 export https_proxy="http://$proxy_ip:8123"
 export no_proxy="127.0.0.1,localhost,$host_ip,$proxy_ip,$director_host,$PRIVATE_IP,$DIRECTOR_FLOATING_IP,$PRIVATE_GATEWAY_IP,$DNS_IP"
 
-cat > credentials.yml <<EOF
+cat > creds.yml <<EOF
 admin_password: admin
 api_key: $OPENSTACK_PASSWORD
 auth_url: $IDENTITY_API_ENDPOINT
@@ -49,14 +49,14 @@ external_ip: $DIRECTOR_FLOATING_IP
 internal_cidr: $PRIVATE_CIDR 
 internal_gw: $PRIVATE_GATEWAY_IP
 internal_ip:  $PRIVATE_IP
-local_bosh_release: bosh.tgz
+local_bosh_release: ../bosh.tgz
 net_id: $NETWORK_UUID
 openstack_domain: $OPENSTACK_DOMAIN
 openstack_password: $OPENSTACK_PASSWORD
 openstack_project: $OPENSTACK_PROJECT
 openstack_tenant: $OPENSTACK_TENANT
 openstack_username: $OPENSTACK_USERNAME
-private_key: ./bosh.pem
+private_key: ../bosh.pem
 project: $OPENSTACK_PROJECT
 region: RegionOne
 username: $OPENSTACK_USERNAME
@@ -267,21 +267,16 @@ git clone https://github.com/cloudfoundry/bosh-deployment.git
 
 curl -L $bosh_release_url > bosh.tgz
 
-./bosh-cli interpolate bosh-deployment/bosh.yml \
-  --var-errs \
+./bosh-cli create-env bosh-deployment/bosh.yml \
+  --state bosh-deployment-state.json
   -o bosh-deployment/openstack/cpi.yml \
   -o bosh-deployment/openstack/keystone-v2.yml \
   -o bosh-deployment/local-bosh-release.yml \
   -o bosh-deployment/external-ip-not-recommended.yml \
-  --vars-store credentials.yml \
-  > bosh-deployment.yml
-
-./bosh-cli create-env bosh-deployment.yml \
-  --vars-store credentials.yml \
+  --vars-store creds.yml \
   --tty
 
-scp -i bosh.pem -o StrictHostKeyChecking=no vcap@$DIRECTOR_FLOATING_IP:/var/vcap/store/director/nginx/director.pem .
-echo $DIRECTOR_FLOATING_IP $director_host | sudo tee -a /etc/hosts
+./bosh-cli interpolate ./creds.yml --path /director_ssl/ca > director.pem
 ./bosh-cli alias-env --ca-cert director.pem -e $director_host bosh
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
