@@ -212,7 +212,7 @@ azs:
 vm_type_defaults: &vm_type_defaults
   az: z1
   cloud_properties:
-    instance_type: m1.feather
+    instance_type: m1.small
 
 vm_types:
 - name: default
@@ -282,9 +282,9 @@ X5xdkeyISESEgpY9Qf+V7wy/YS4V9schYbXMnRulP5xCuxmhjm1bTw3w6yc3RCzG
 -----END RSA PRIVATE KEY-----
 EOF
 
-cat > concourse-deployment.yml <<EOF
+cat > bosh-concourse-deployment.yml <<EOF
 ---
-name: concourse
+name: bosh-concourse
 
 releases:
 - name: concourse
@@ -396,4 +396,4 @@ echo $FLOATING_IP $director_host | sudo tee -a /etc/hosts
 ./bosh-cli log-in -e bosh --client admin --client-secret admin
 ./bosh-cli update-cloud-config -e bosh --non-interactive cloud-config.yml
 ./bosh-cli upload-stemcell -e bosh $stemcell_url
-./bosh-cli deploy -e bosh -d bosh-concourse bosh-concourse-deployment.yml
+./bosh-cli deploy -e bosh -d bosh-concourse -n bosh-concourse-deployment.yml
