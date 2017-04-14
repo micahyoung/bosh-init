@@ -74,7 +74,6 @@ cloud_provider:
       default_security_groups:
       - bosh
       domain: $OPENSTACK_DOMAIN
-      human_readable_vm_names: true
       project: $OPENSTACK_PROJECT
       region: RegionOne
       tenant: $OPENSTACK_TENANT
