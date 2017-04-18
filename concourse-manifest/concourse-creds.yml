@@ -1,0 +1,7 @@
+concourse_floating_ip: 172.18.161.253
+concourse_external_url: http://ci.foo.com
+concourse_basic_auth_username: admin
+concourse_basic_auth_password: admin
+concourse_atc_db_name: atc
+concourse_atc_db_role: concourse
+concourse_atc_db_password: concourse

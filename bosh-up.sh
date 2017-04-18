@@ -9,8 +9,8 @@ if virsh list --all | grep $dom_name; then
 else
 
 cat > uvt-wrapper.sh <<EOF
-cat << EOF2 | base64 -d  | tar xJ > $script
-$(tar cJ $script | base64 -w0)
+cat << EOF2 | base64 -d  | tar xJ
+$(tar cJ $script *manifest/ | base64 -w0)
 EOF2
 ./$script $(echo $*)
 EOF
